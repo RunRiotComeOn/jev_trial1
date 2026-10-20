@@ -1,0 +1,59 @@
+name: Jev spam pilot
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "full = day-1 run; stability = day-2 rerun on 100 test messages; baselines = no API calls"
+        type: choice
+        options: [full, stability, baselines]
+        default: full
+
+permissions:
+  contents: write
+
+concurrency:
+  group: jev-pilot-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install -r requirements.txt
+
+      - name: Run pilot
+        env:
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+        run: |
+          case "${{ inputs.mode }}" in
+            full)       ./run_all.sh ;;
+            stability)  ./run_all.sh stability ;;
+            baselines)  python data.py && python baselines.py --label-sources true && python analyze.py ;;
+          esac
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pilot-results-${{ inputs.mode }}-${{ github.run_number }}
+          path: |
+            jev_cache.jsonl
+            results/
+          if-no-files-found: ignore
+
+      # Commit the Jev cache and results back so the day-2 run and later analysis never re-call the API.
+      - name: Commit results
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A jev_cache.jsonl results/ data/processed/ 2>/dev/null || true
+          git diff --cached --quiet || git commit -m "Pilot results (${{ inputs.mode }}, run ${{ github.run_number }})"
+          git push
