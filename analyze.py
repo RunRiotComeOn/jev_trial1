@@ -279,7 +279,7 @@ def report(aggs, jevs, alts, costs, stab, lat, has_e3):
                                                    & (aggs[d]["variant"] == "raw")]["f1_mean"].max() for d in aggs}
         L.append("- **Contamination:** Jev F1 minus best full-pool baseline F1: "
                  + ", ".join(f"{d} {gap[d]:+.3f}" for d in gap)
-                 + ". A much larger gap on SMS than on YouTube suggests exposure, not skill.")
+                 + ". A gap well above zero on one dataset but not the others would suggest exposure, not skill.")
     L += ["", "## Figures", "", "![Figure 1](figures/fig1_f1.png)", "", "![Figure 2](figures/fig2_calibration.png)", ""]
     if has_e3:
         L += ["![Figure 3](figures/fig3_student.png)", ""]

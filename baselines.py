@@ -20,6 +20,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from joblib import Parallel, delayed
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import MultinomialNB
@@ -30,7 +31,7 @@ import jev_run
 from metrics import coverage_threshold
 
 RESULTS = Path(__file__).parent / "results"
-BUDGETS = [10, 20, 50, 100, 200, 500, None]  # None = full pool
+BUDGETS = [10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, None]  # None = full pool; budgets >= pool are skipped
 SEEDS = range(10)
 CAL_FRACTION = 0.20
 LABEL_SOURCES = ["true", "jev_hard", "jev_soft"]
@@ -129,6 +130,32 @@ def jev_pool_labels(dataset: str, pool: pd.DataFrame) -> pd.Series | None:
     return p.reindex(pool["id"]).to_numpy()
 
 
+def one_draw(dataset, pool_texts, test_texts, targets, source, n, seed):
+    """Train both models (raw and calibrated) on one stratified draw of n labels."""
+    hard = (targets >= 0.5).astype(int)
+    rng = np.random.default_rng([seed, 0 if n is None else n])
+    idx = sample_pool(hard, n, rng)
+    fit_pos, cal_pos = split_cal(hard[idx], rng)
+    runs, probs = [], []
+    for model_name in MODELS:
+        meta = {"dataset": dataset, "label_source": source, "n": len(idx),
+                "budget": "full" if n is None else n, "seed": seed, "model": model_name}
+
+        raw = fit(model_name, pool_texts[idx], targets[idx])
+        runs.append({**meta, "variant": "raw", "calibrated": False, "n_fit": len(idx), "n_cal": 0,
+                     "cov_threshold": coverage_threshold(proba(raw, pool_texts))})
+        probs.append(proba(raw, test_texts))
+
+        m = fit(model_name, pool_texts[idx[fit_pos]], targets[idx[fit_pos]])
+        cal = platt(proba(m, pool_texts[idx[cal_pos]]), targets[idx[cal_pos]]) if len(cal_pos) else None
+        apply = cal or (lambda p: p)
+        runs.append({**meta, "variant": "calibrated", "calibrated": cal is not None,
+                     "n_fit": len(fit_pos), "n_cal": len(cal_pos),
+                     "cov_threshold": coverage_threshold(apply(proba(m, pool_texts)))})
+        probs.append(apply(proba(m, test_texts)))
+    return runs, probs
+
+
 def sweep(dataset: str, sources: list[str]):
     df = data.load(dataset)
     pool, test = df[df["split"] == "train"].reset_index(drop=True), df[df["split"] == "test"].reset_index(drop=True)
@@ -141,32 +168,16 @@ def sweep(dataset: str, sources: list[str]):
             targets_by_source["jev_hard"] = (p_jev >= 0.5).astype(float)
             targets_by_source["jev_soft"] = p_jev
 
-    runs, probs = [], []
-    for source in [s for s in sources if s in targets_by_source]:
-        targets = targets_by_source[source]
-        hard = (targets >= 0.5).astype(int)
-        for n in BUDGETS:
-            for seed in SEEDS:
-                rng = np.random.default_rng([seed, 0 if n is None else n])
-                idx = sample_pool(hard, n, rng)
-                fit_pos, cal_pos = split_cal(hard[idx], rng)
-                for model_name in MODELS:
-                    meta = {"dataset": dataset, "label_source": source, "n": len(idx),
-                            "budget": "full" if n is None else n, "seed": seed, "model": model_name}
-
-                    raw = fit(model_name, pool_texts[idx], targets[idx])
-                    runs.append({**meta, "variant": "raw", "calibrated": False, "n_fit": len(idx), "n_cal": 0,
-                                 "cov_threshold": coverage_threshold(proba(raw, pool_texts))})
-                    probs.append(proba(raw, test_texts))
-
-                    m = fit(model_name, pool_texts[idx[fit_pos]], targets[idx[fit_pos]])
-                    cal = platt(proba(m, pool_texts[idx[cal_pos]]), targets[idx[cal_pos]]) if len(cal_pos) else None
-                    apply = cal or (lambda p: p)
-                    runs.append({**meta, "variant": "calibrated", "calibrated": cal is not None,
-                                 "n_fit": len(fit_pos), "n_cal": len(cal_pos),
-                                 "cov_threshold": coverage_threshold(apply(proba(m, pool_texts)))})
-                    probs.append(apply(proba(m, test_texts)))
-            print(f"  {dataset} {source:8s} n={'full' if n is None else n} done")
+    tasks = [(source, n, seed)
+             for source in [s for s in sources if s in targets_by_source]
+             for n in [b for b in BUDGETS if b is None or b < len(pool)]
+             for seed in SEEDS]
+    out = Parallel(n_jobs=-1)(
+        delayed(one_draw)(dataset, pool_texts, test_texts, targets_by_source[source], source, n, seed)
+        for source, n, seed in tasks)
+    runs = [r for rs, _ in out for r in rs]
+    probs = [p for _, ps in out for p in ps]
+    print(f"  {dataset}: {len(tasks)} draws done")
 
     RESULTS.mkdir(exist_ok=True)
     pd.DataFrame(runs).to_csv(RESULTS / f"runs_{dataset}.csv", index=False)
@@ -197,11 +208,12 @@ def main():
     ap.add_argument("--label-sources", nargs="+", default=LABEL_SOURCES, choices=LABEL_SOURCES)
     args = ap.parse_args()
 
-    lat = {}
+    lat_path = RESULTS / "latency_baselines.json"
+    lat = json.loads(lat_path.read_text()) if lat_path.exists() else {}
     for dataset in args.datasets:
         pool, test = sweep(dataset, args.label_sources)
         lat[dataset] = latency(pool, test, dataset)
-    (RESULTS / "latency_baselines.json").write_text(json.dumps(lat, indent=2))
+    lat_path.write_text(json.dumps(lat, indent=2))
     print(json.dumps(lat, indent=2))
 
 

@@ -1,6 +1,6 @@
-"""Load the YouTube and SMS spam datasets, normalize to id/text/label, make the fixed 70/30 split.
+"""Load the spam datasets, normalize to id/text/label, make the fixed 70/30 split.
 
-Output: data/processed/{youtube,sms}.csv with columns id, text, label, split.
+Output: data/processed/{youtube,sms,enron}.csv with columns id, text, label, split.
 """
 
 from pathlib import Path
@@ -13,12 +13,15 @@ RAW = ROOT / "data" / "raw"
 PROCESSED = ROOT / "data" / "processed"
 SEED = 0
 TEST_SIZE = 0.30
-DATASETS = ["youtube", "sms"]
+DATASETS = ["youtube", "sms", "enron"]
+# Emails are truncated so every model (Jev and baselines) sees the same text; covers >90% of Enron emails whole.
+MAX_CHARS = 4000
 
 # State passed to Jev alongside the message text (see jev_run.py).
 PLATFORM = {
     "youtube": "YouTube comment on a music video",
     "sms": "SMS text message",
+    "enron": "Email (subject line, then body) received in a corporate mailbox",
 }
 
 
@@ -40,7 +43,18 @@ def load_sms() -> pd.DataFrame:
     return df[["id", "text", "label"]]
 
 
-LOADERS = {"youtube": load_youtube, "sms": load_sms}
+def load_enron() -> pd.DataFrame:
+    # Enron-Spam (Metsis et al. 2006), all six folders, as one CSV from MWiechmann/enron_spam_data.
+    df = pd.read_csv(RAW / "enron" / "enron_spam_data.zip")
+    df["text"] = (df["Subject"].fillna("") + "\n\n" + df["Message"].fillna("")).str.strip().str[:MAX_CHARS]
+    df["label"] = (df["Spam/Ham"] == "spam").astype(int)
+    df["id"] = [f"enron-{i:05d}" for i in df["Message ID"]]
+    # ~10% of emails are exact duplicates (same text, same label); keep one so train and test never share a text.
+    df = df[df["text"] != ""].drop_duplicates("text")
+    return df[["id", "text", "label"]].reset_index(drop=True)
+
+
+LOADERS = {"youtube": load_youtube, "sms": load_sms, "enron": load_enron}
 
 
 def make_split(df: pd.DataFrame) -> pd.DataFrame:
