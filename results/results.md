@@ -26,9 +26,9 @@ Smallest budget whose mean reaches Jev's bootstrap interval; `>pool` = never rea
 
 | Dataset | Model | Variant | n* F1 | n* Brier | n* ECE | n* coverage |
 |---|---|---|---|---|---|---|
-| youtube | Naive Bayes | calibrated | 1369 | 1369 | 200 | 500 |
+| youtube | Naive Bayes | calibrated | 1000 | 1000 | 200 | 500 |
 | youtube | Naive Bayes | raw | >pool | >pool | 500 | 200 |
-| youtube | TF-IDF + LR | calibrated | 1369 | 1369 | 500 | 1369 |
+| youtube | TF-IDF + LR | calibrated | 1000 | 1000 | 500 | 1000 |
 | youtube | TF-IDF + LR | raw | 500 | >pool | >pool | >pool |
 | sms | Naive Bayes | calibrated | 3901 | 3901 | 500 | 3901 |
 | sms | Naive Bayes | raw | 3901 | 3901 | 200 | 100 |
@@ -43,7 +43,7 @@ Smallest budget whose mean reaches Jev's bootstrap interval; `>pool` = never rea
 | youtube | TF-IDF + LR | true | 500 | 0.934 | no |
 | youtube | Naive Bayes | jev_hard | >pool | 0.913 | no |
 | youtube | TF-IDF + LR | jev_hard | >pool | 0.914 | no |
-| youtube | Naive Bayes | jev_soft | >pool | 0.902 | no |
+| youtube | Naive Bayes | jev_soft | >pool | 0.904 | no |
 | youtube | TF-IDF + LR | jev_soft | >pool | 0.901 | no |
 | sms | Naive Bayes | true | 3901 | 0.932 | yes |
 | sms | TF-IDF + LR | true | >pool | 0.818 | no |
@@ -57,8 +57,8 @@ Smallest budget whose mean reaches Jev's bootstrap interval; `>pool` = never rea
 | Dataset | Model | Median ms | p95 ms | US$ / 1,000 |
 |---|---|---|---|---|
 | youtube | Jev (client-side) | 101.9 | 224.1 | 0.016296 |
-| youtube | Naive Bayes (CPU) | 0.41 | 0.59 | ~0 |
-| youtube | TF-IDF + LR (CPU) | 0.66 | 0.88 | ~0 |
+| youtube | Naive Bayes (CPU) | 0.37 | 0.67 | ~0 |
+| youtube | TF-IDF + LR (CPU) | 0.65 | 1.38 | ~0 |
 | sms | Jev (client-side) | 100.0 | 215.4 | 0.015861 |
 | sms | Naive Bayes (CPU) | 0.50 | 0.70 | ~0 |
 | sms | TF-IDF + LR (CPU) | 0.86 | 3.32 | ~0 |
@@ -69,7 +69,7 @@ Smallest budget whose mean reaches Jev's bootstrap interval; `>pool` = never rea
 - **Stability (youtube):** pending (run `jev_run.py --stability --run-tag day2` on a second day).
 - **Wording sensitivity (sms):** alt rubric F1 0.931 vs main 0.931; Brier 0.014 vs 0.015.
 - **Stability (sms):** pending (run `jev_run.py --stability --run-tag day2` on a second day).
-- **Contamination:** Jev F1 minus best full-pool baseline F1: youtube +0.006, sms -0.001. A much larger gap on SMS than on YouTube suggests exposure, not skill.
+- **Contamination:** Jev F1 minus best full-pool baseline F1: youtube +0.006, sms -0.001. A gap well above zero on one dataset but not the others would suggest exposure, not skill.
 
 ## Figures
 
