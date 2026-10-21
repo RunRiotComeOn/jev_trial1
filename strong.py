@@ -25,7 +25,7 @@ from joblib import Parallel, delayed
 
 import data
 from analyze import FIGURES, MODEL_LABEL, RESULTS, jev_summary
-from baselines import BUDGETS, SEEDS, fit, platt, proba, sample_pool, split_cal
+from baselines import BUDGETS, SEEDS, fit, jev_pool_labels, platt, proba, sample_pool, split_cal
 from generalize import baseline_scores, jev_scores
 from metrics import all_metrics, coverage_threshold
 from strong_models import STRONG_LABELS, STRONG_MODELS
@@ -37,17 +37,28 @@ N_JOBS = 4
 
 # ---------- A. label-budget curve ----------
 
-def curve_job(dataset, n, seed):
+def pool_targets(pool, source):
+    """Training targets for the pool: true labels, or Jev's hard/soft labels (E3)."""
+    if source == "true":
+        return pool["label"].to_numpy(float)
+    p = jev_pool_labels(pool["dataset"].iloc[0], pool)
+    return (p >= 0.5).astype(float) if source == "jev_hard" else p
+
+
+def curve_job(dataset, n, seed, source="true", models=MODELS):
     t0 = time.perf_counter()
     df = data.load(dataset)
     pool, test = df[df["split"] == "train"].reset_index(drop=True), df[df["split"] == "test"]
-    texts, y = pool["text"].to_numpy(object), pool["label"].to_numpy(float)
+    pool = pool.assign(dataset=dataset)
+    texts, y = pool["text"].to_numpy(object), pool_targets(pool, source)
+    hard = (y >= 0.5).astype(int)
     rng = np.random.default_rng([seed, 0 if n is None else n])  # same draws as baselines.py
-    idx = sample_pool(y.astype(int), n, rng)
-    fit_pos, cal_pos = split_cal(y[idx].astype(int), rng)
+    idx = sample_pool(hard, n, rng)
+    fit_pos, cal_pos = split_cal(hard[idx], rng)
     rows = []
-    for model_name in MODELS:
-        meta = {"dataset": dataset, "budget": "full" if n is None else n, "n": len(idx), "seed": seed, "model": model_name}
+    for model_name in models:
+        meta = {"dataset": dataset, "label_source": source, "budget": "full" if n is None else n, "n": len(idx),
+                "seed": seed, "model": model_name}
         m = fit(model_name, texts[idx], y[idx])
         rows.append({**meta, "variant": "raw", **all_metrics(
             test["label"], proba(m, test["text"]), coverage_threshold(proba(m, texts)))})
@@ -55,7 +66,7 @@ def curve_job(dataset, n, seed):
         cal = (platt(proba(m, texts[idx[cal_pos]]), y[idx[cal_pos]]) if len(cal_pos) else None) or (lambda p: p)
         rows.append({**meta, "variant": "calibrated", **all_metrics(
             test["label"], cal(proba(m, test["text"])), coverage_threshold(cal(proba(m, texts))))})
-    print(f"curve {dataset} n={'full' if n is None else n} seed={seed} {time.perf_counter() - t0:.0f}s", flush=True)
+    print(f"curve {dataset} {source} n={'full' if n is None else n} seed={seed} {time.perf_counter() - t0:.0f}s", flush=True)
     return rows
 
 
@@ -123,8 +134,9 @@ def run_shift():
 
 # ---------- report ----------
 
-def curve_summary(curve):
-    return (curve.groupby(["dataset", "model", "variant", "budget"], sort=False)
+def curve_summary(curve, by_source=False):
+    keys = ["dataset", *(["label_source"] if by_source else []), "model", "variant", "budget"]
+    return (curve.groupby(keys, sort=False)
             .agg(n=("n", "mean"), f1=("f1", "mean"), f1_sd=("f1", "std"), brier=("brier", "mean"),
                  ece=("ece", "mean"), coverage=("coverage", "mean"), auto_risk=("auto_risk", "mean"))
             .reset_index())
