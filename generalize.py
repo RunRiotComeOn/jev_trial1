@@ -27,11 +27,11 @@ from metrics import all_metrics, coverage_threshold
 METRICS = ["f1", "brier", "ece", "coverage", "auto_risk"]
 
 
-def baseline_scores(train: pd.DataFrame, test: pd.DataFrame, unlabeled: pd.DataFrame):
+def baseline_scores(train: pd.DataFrame, test: pd.DataFrame, unlabeled: pd.DataFrame, models=MODELS):
     """Raw (all labels) and calibrated (80/20 Platt, mean over seeds) metrics for each model."""
     X, y = train["text"].to_numpy(object), train["label"].to_numpy(float)
     rows = []
-    for model_name in MODELS:
+    for model_name in models:
         m = fit(model_name, X, y)
         t = coverage_threshold(proba(m, unlabeled["text"]))
         rows.append({"model": model_name, "variant": "raw", **all_metrics(test["label"], proba(m, test["text"]), t)})

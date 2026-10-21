@@ -28,6 +28,7 @@ from sklearn.pipeline import make_pipeline
 import data
 import jev_run
 from metrics import coverage_threshold
+from strong_models import STRONG_MODELS
 
 RESULTS = Path(__file__).parent / "results"
 BUDGETS = [10, 20, 50, 100, 200, 500, None]  # None = full pool
@@ -50,6 +51,7 @@ def tfidf_logreg():
 
 
 MODELS = {"naive_bayes": naive_bayes, "tfidf_logreg": tfidf_logreg}
+ALL_MODELS = {**MODELS, **STRONG_MODELS}  # fit() accepts any of these; the sweeps here use MODELS
 
 
 def expand(texts, targets):
@@ -70,7 +72,7 @@ def expand(texts, targets):
 
 def fit(model_name, texts, targets):
     X, y, w = expand(texts, targets)
-    model = MODELS[model_name]()
+    model = ALL_MODELS[model_name]()
     model.fit(X, y, **{f"{model.steps[-1][0]}__sample_weight": w})
     return model
 
