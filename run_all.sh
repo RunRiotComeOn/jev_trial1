@@ -18,3 +18,5 @@ python analyze.py
 python generalize.py
 python mixture.py
 python strong.py
+python teacher_student.py
+python teacher_student_paired.py

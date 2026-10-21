@@ -14,6 +14,7 @@ and SMS spam datasets.
 | `mixture.py` | Train on mixes of both datasets (YouTube share × total labels), test on each → `results/mixture.md` |
 | `generalize.py` | Cross-dataset and leave-one-video-out generalization vs Jev → `results/generalization.md` |
 | `strong_models.py`, `strong.py` | Stronger non-pretrained models (char n-grams, NB-SVM, surface features, LightGBM, ensemble) vs Jev → `results/strong.md` |
+| `teacher_student.py`, `teacher_student_paired.py` | Strong models trained on Jev's labels only (E3) → `results/teacher_student*.md` |
 | `run_all.sh` | Day 1: everything; `./run_all.sh stability` on day 2 |
 
 ## Running
