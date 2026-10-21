@@ -13,6 +13,7 @@ and SMS spam datasets.
 | `analyze.py` | n* estimates, figures, `results/results.md`; never calls the API |
 | `mixture.py` | Train on mixes of both datasets (YouTube share × total labels), test on each → `results/mixture.md` |
 | `generalize.py` | Cross-dataset and leave-one-video-out generalization vs Jev → `results/generalization.md` |
+| `strong_models.py`, `strong.py` | Stronger non-pretrained models (char n-grams, NB-SVM, surface features, LightGBM, ensemble) vs Jev → `results/strong.md` |
 | `run_all.sh` | Day 1: everything; `./run_all.sh stability` on day 2 |
 
 ## Running

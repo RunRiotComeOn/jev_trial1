@@ -17,3 +17,4 @@ python baselines.py                            # true labels + Jev labels (E3)
 python analyze.py
 python generalize.py
 python mixture.py
+python strong.py
