@@ -121,7 +121,7 @@ def lightgbm():
     return make_pipeline(
         make_union(word_tfidf(max_features=20000), char_tfidf(max_features=20000), surface()),
         LGBMClassifier(n_estimators=300, learning_rate=0.05, num_leaves=15, min_child_samples=5,
-                       colsample_bytree=0.3, class_weight="balanced", random_state=0, verbose=-1),
+                       colsample_bytree=0.3, class_weight="balanced", random_state=0, n_jobs=1, verbose=-1),
     )
 
 

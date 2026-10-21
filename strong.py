@@ -8,6 +8,13 @@ Outputs: results/strong_curve.csv, results/strong_shift.csv, results/strong.md,
          results/figures/fig6_strong_curve.png, results/figures/fig7_strong_shift.png
 """
 
+import os
+import time
+
+# One thread per worker: LightGBM/BLAS threads x joblib workers otherwise oversubscribe the CPU.
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
+
 import matplotlib
 
 matplotlib.use("Agg")
@@ -31,6 +38,7 @@ N_JOBS = 4
 # ---------- A. label-budget curve ----------
 
 def curve_job(dataset, n, seed):
+    t0 = time.perf_counter()
     df = data.load(dataset)
     pool, test = df[df["split"] == "train"].reset_index(drop=True), df[df["split"] == "test"]
     texts, y = pool["text"].to_numpy(object), pool["label"].to_numpy(float)
@@ -47,12 +55,13 @@ def curve_job(dataset, n, seed):
         cal = (platt(proba(m, texts[idx[cal_pos]]), y[idx[cal_pos]]) if len(cal_pos) else None) or (lambda p: p)
         rows.append({**meta, "variant": "calibrated", **all_metrics(
             test["label"], cal(proba(m, test["text"])), coverage_threshold(cal(proba(m, texts))))})
+    print(f"curve {dataset} n={'full' if n is None else n} seed={seed} {time.perf_counter() - t0:.0f}s", flush=True)
     return rows
 
 
 def run_curve():
     jobs = [(d, n, s) for d in data.DATASETS for n in BUDGETS for s in SEEDS]
-    out = Parallel(n_jobs=N_JOBS, verbose=5)(delayed(curve_job)(*j) for j in jobs)
+    out = Parallel(n_jobs=N_JOBS, verbose=0)(delayed(curve_job)(*j) for j in jobs)
     df = pd.DataFrame([r for rows in out for r in rows])
     df.to_csv(RESULTS / "strong_curve.csv", index=False)
     return df
@@ -81,16 +90,18 @@ def shift_tasks():
 
 def shift_job(task, model_name):
     setting, tgt, train, tst, unl = task
+    t0 = time.perf_counter()
     rows = [{"setting": setting, "target": tgt, "n_test": len(tst), **r}
             for r in baseline_scores(train, tst, unl, models=[model_name])]
     raw = fit(model_name, train["text"].to_numpy(object), train["label"].to_numpy(float))
     preds = (tst["label"].to_numpy(), proba(raw, tst["text"]), proba(raw, unl["text"]))
+    print(f"shift {setting} -> {tgt} {model_name} {time.perf_counter() - t0:.0f}s", flush=True)
     return rows, (setting, model_name, preds)
 
 
 def run_shift():
     tasks = shift_tasks()
-    out = Parallel(n_jobs=N_JOBS, verbose=5)(delayed(shift_job)(t, m) for t in tasks for m in MODELS)
+    out = Parallel(n_jobs=N_JOBS, verbose=0)(delayed(shift_job)(t, m) for t in tasks for m in MODELS)
     rows = [r for rs, _ in out for r in rs]
     # Pool the five unseen-video runs per model (raw variant): every comment scored by a model that never saw its video.
     for model_name in MODELS:
