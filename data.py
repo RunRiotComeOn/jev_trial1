@@ -1,6 +1,6 @@
 """Load the YouTube and SMS spam datasets, normalize to id/text/label, make the fixed 70/30 split.
 
-Output: data/processed/{youtube,sms}.csv with columns id, text, label, split.
+Output: data/processed/{youtube,sms}.csv with columns id, text, label, group, split.
 """
 
 from pathlib import Path
@@ -23,10 +23,11 @@ PLATFORM = {
 
 
 def load_youtube() -> pd.DataFrame:
-    frames = [pd.read_csv(p) for p in sorted((RAW / "youtube").glob("Youtube0*.csv"))]
+    # group = the video a comment came from, used for leave-one-video-out (generalize.py).
+    frames = [pd.read_csv(p).assign(group=p.stem.split("-")[1]) for p in sorted((RAW / "youtube").glob("Youtube0*.csv"))]
     df = pd.concat(frames, ignore_index=True)
     # Only the text and the binary label; author and date are dropped.
-    df = df.rename(columns={"COMMENT_ID": "id", "CONTENT": "text", "CLASS": "label"})[["id", "text", "label"]]
+    df = df.rename(columns={"COMMENT_ID": "id", "CONTENT": "text", "CLASS": "label"})[["id", "text", "label", "group"]]
     # A handful of comment ids repeat across files; make ids unique.
     dup = df["id"].duplicated(keep=False)
     df.loc[dup, "id"] = df.loc[dup, "id"] + "-" + df[dup].groupby("id").cumcount().astype(str)
@@ -37,7 +38,8 @@ def load_sms() -> pd.DataFrame:
     df = pd.read_csv(RAW / "sms" / "sms.tsv", sep="\t", header=None, names=["label", "text"], quoting=3)
     df["label"] = (df["label"] == "spam").astype(int)
     df["id"] = [f"sms-{i:05d}" for i in range(len(df))]
-    return df[["id", "text", "label"]]
+    df["group"] = "sms"
+    return df[["id", "text", "label", "group"]]
 
 
 LOADERS = {"youtube": load_youtube, "sms": load_sms}
