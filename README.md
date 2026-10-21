@@ -11,6 +11,7 @@ and SMS spam datasets.
 | `baselines.py` | Label-budget sweep (E1–E3) and single-message CPU latency (E4) → `results/` |
 | `metrics.py` | F1, Brier, ECE (10 equal-mass bins), coverage at 5% risk |
 | `analyze.py` | n* estimates, figures, `results/results.md`; never calls the API |
+| `mixture.py` | Train on mixes of both datasets (YouTube share × total labels), test on each → `results/mixture.md` |
 | `generalize.py` | Cross-dataset and leave-one-video-out generalization vs Jev → `results/generalization.md` |
 | `run_all.sh` | Day 1: everything; `./run_all.sh stability` on day 2 |
 
