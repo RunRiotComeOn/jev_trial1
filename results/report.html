@@ -87,7 +87,7 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   <span class="eyebrow">Pilot report · spam filtering · 21 Oct 2026</span>
   <h1>Jev vs lightweight models on spam filtering</h1>
   <p class="lead">Zero-shot Jev (<code>jev-1.13.0</code>, one Noul question) compared with classic, non-pretrained text classifiers on the YouTube and SMS spam datasets: label efficiency, calibration, distribution shift, and Jev as a teacher.</p>
-  <p class="meta">9,790 Jev calls, 0 failures, every response reported <code>jev-1.13.0</code>. Total API cost about US$0.16. The day-2 stability rerun is still pending.</p>
+  <p class="meta">9,790 Jev calls, 0 failures, every response reported <code>jev-1.13.0</code>. Total API cost about US$0.16. A day-2 rerun on 200 test messages changed no decisions.</p>
 </header>
 
 <section class="verdict" aria-labelledby="verdict">
@@ -124,7 +124,7 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       <tr><td>SMS</td><td class="num">0.927 [0.903, 0.949]</td><td class="num">0.014</td><td class="num">0.032</td><td class="num">1.000</td><td class="num">0.020</td><td class="num">0.984</td></tr>
     </tbody>
   </table></div>
-  <p class="note">A second, independently worded rubric changed F1 by at most 0.003 (YouTube 0.935, SMS 0.928). Jev's margin over the best original baseline is +0.005 on YouTube and −0.005 on SMS, so there is no sign of extra exposure to the older SMS set; this check cannot rule out exposure to both.</p>
+  <p class="note">A second, independently worded rubric changed F1 by at most 0.003 (YouTube 0.935, SMS 0.928). Jev's margin over the best original baseline is +0.005 on YouTube and −0.005 on SMS, so there is no sign of extra exposure to the older SMS set; this check cannot rule out exposure to both. Stability: rerunning Jev on 100 fixed test messages per dataset one day later changed 0 of 200 decisions (mean |Δp| 0.006 on YouTube, 0.003 on SMS; same model string <code>jev-1.13.0</code>).</p>
 </section>
 
 <section aria-labelledby="labels">
@@ -247,7 +247,6 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     <li>The stronger models were chosen after seeing the first results. Their settings are standard defaults, but choosing the best of six is mildly optimistic.</li>
     <li>Jev ran with one fixed rubric and no examples. Few-shot prompting or rubric tuning was not tested.</li>
     <li>Jev received a platform description; the classic models saw text only.</li>
-    <li>Day-2 stability rerun (100 test messages per dataset) is scheduled and not yet reported.</li>
   </ul>
 </section>
 

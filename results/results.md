@@ -66,9 +66,9 @@ Smallest budget whose mean reaches Jev's bootstrap interval; `>pool` = never rea
 ## Checks
 
 - **Wording sensitivity (youtube):** alt rubric F1 0.935 vs main 0.938; Brier 0.056 vs 0.051.
-- **Stability (youtube):** pending (run `jev_run.py --stability --run-tag day2` on a second day).
+- **Stability (youtube):** 0/100 decisions changed on day 2 (mean |Δp| 0.006; day-2 model jev-1.13.0).
 - **Wording sensitivity (sms):** alt rubric F1 0.928 vs main 0.927; Brier 0.014 vs 0.014.
-- **Stability (sms):** pending (run `jev_run.py --stability --run-tag day2` on a second day).
+- **Stability (sms):** 0/100 decisions changed on day 2 (mean |Δp| 0.003; day-2 model jev-1.13.0).
 - **Contamination:** Jev F1 minus best full-pool baseline F1: youtube +0.005, sms -0.005. A much larger gap on SMS than on YouTube suggests exposure, not skill.
 
 ## Figures
